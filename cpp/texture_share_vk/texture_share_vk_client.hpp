@@ -1,7 +1,9 @@
 #pragma once
 
 #include "texture_share_vk/config.hpp"
+extern "C" {
 #include "texture_share_vk/texture_share_vk_client.h"
+}
 #include <cstdint>
 #include <string_view>
 #include <vulkan/vulkan_core.h>

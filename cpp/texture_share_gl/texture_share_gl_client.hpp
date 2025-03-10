@@ -1,6 +1,8 @@
 #pragma once
 
+extern "C" {
 #include "texture_share_gl/texture_share_gl_client.h"
+}
 #include "texture_share_vk/config.hpp"
 #include <string_view>
 
