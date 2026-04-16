@@ -35,17 +35,16 @@ impl VkCpuBuffer {
 		buffer_size: u64,
 		ram_memory: Option<NonNull<c_void>>,
 	) -> Result<VkCpuBuffer, vk::Result> {
-		let mut external_memory_buffer_info = vk::ExternalMemoryBufferCreateInfo::builder()
-			.handle_types(vk::ExternalMemoryHandleTypeFlags::HOST_ALLOCATION_EXT)
-			.build();
-		let create_info = vk::BufferCreateInfo::builder()
+		let mut external_memory_buffer_info = vk::ExternalMemoryBufferCreateInfo::default()
+			.handle_types(vk::ExternalMemoryHandleTypeFlags::HOST_ALLOCATION_EXT);
+		let queue_family_indices = [vk_device.graphics_queue_family_index];
+		let create_info = vk::BufferCreateInfo::default()
 			.flags(vk::BufferCreateFlags::default())
 			.size(buffer_size)
 			.usage(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC)
-			.queue_family_indices(&[vk_device.graphics_queue_family_index])
+			.queue_family_indices(&queue_family_indices)
 			.sharing_mode(vk::SharingMode::EXCLUSIVE)
-			.push_next(&mut external_memory_buffer_info)
-			.build();
+			.push_next(&mut external_memory_buffer_info);
 		let buffer = vk_device.create_buffer(&create_info)?;
 
 		let buffer_memory_requirements = unsafe {
@@ -54,7 +53,7 @@ impl VkCpuBuffer {
 				.get_buffer_memory_requirements(buffer.handle)
 		};
 
-		let mut memory_allocate_info = vk::MemoryAllocateInfo::builder()
+		let mut memory_allocate_info = vk::MemoryAllocateInfo::default()
 			.allocation_size(buffer_size)
 			.memory_type_index(
 				vk_instance
@@ -71,10 +70,9 @@ impl VkCpuBuffer {
 		let import_memory_info = if ram_memory.is_some() {
 			// Ensure that vulkan allocates host memory at the specified location
 			Some(
-				vk::ImportMemoryHostPointerInfoEXT::builder()
+				vk::ImportMemoryHostPointerInfoEXT::default()
 					.handle_type(vk::ExternalMemoryHandleTypeFlags::HOST_ALLOCATION_EXT)
-					.host_pointer(ram_memory.as_ref().unwrap().as_ptr())
-					.build(),
+					.host_pointer(ram_memory.as_ref().unwrap().as_ptr()),
 			)
 		} else {
 			None
@@ -89,7 +87,7 @@ impl VkCpuBuffer {
 		let memory = unsafe {
 			vk_device
 				.device
-				.allocate_memory(&memory_allocate_info.build(), None)
+				.allocate_memory(&memory_allocate_info, None)
 		}?;
 
 		unsafe {
@@ -155,8 +153,8 @@ impl VkCpuBuffer {
 		src_access_mask: vk::AccessFlags,
 		dst_access_mask: vk::AccessFlags,
 		buffer_size: u64,
-	) -> vk::BufferMemoryBarrier {
-		vk::BufferMemoryBarrier::builder()
+	) -> vk::BufferMemoryBarrier<'static> {
+		vk::BufferMemoryBarrier::default()
 			.buffer(buffer)
 			.src_access_mask(src_access_mask)
 			.dst_access_mask(dst_access_mask)
@@ -164,7 +162,6 @@ impl VkCpuBuffer {
 			.size(buffer_size)
 			.src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
 			.dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-			.build()
 	}
 
 	pub fn read_image_to_cpu(
@@ -203,7 +200,7 @@ impl VkCpuBuffer {
 			};
 
 			// Setting buffer_row_length and buffer_image_height to 0 indicates a tightly packed memory range, with size determined by image_extent
-			let copy_region = vk::BufferImageCopy::builder()
+			let copy_region = vk::BufferImageCopy::default()
 				.buffer_row_length(0)
 				.buffer_image_height(0)
 				.image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
@@ -218,8 +215,7 @@ impl VkCpuBuffer {
 					layer_count: 1,
 					mip_level: 0,
 					..Default::default()
-				})
-				.build();
+				});
 
 			unsafe {
 				vk_device.device.cmd_copy_image_to_buffer(
@@ -339,7 +335,7 @@ impl VkCpuBuffer {
 			};
 
 			// Setting buffer_row_length and buffer_image_height to 0 indicates a tightly packed memory range, with size determined by image_extent
-			let copy_region = vk::BufferImageCopy::builder()
+			let copy_region = vk::BufferImageCopy::default()
 				.buffer_row_length(0)
 				.buffer_image_height(0)
 				.image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
@@ -354,8 +350,7 @@ impl VkCpuBuffer {
 					layer_count: 1,
 					mip_level: 0,
 					..Default::default()
-				})
-				.build();
+				});
 
 			unsafe {
 				vk_device.device.cmd_copy_buffer_to_image(
@@ -435,11 +430,10 @@ impl VkCpuBuffer {
 			};
 
 			// Copy buffer
-			let region = vk::BufferCopy::builder()
+			let region = vk::BufferCopy::default()
 				.src_offset(0)
 				.dst_offset(0)
-				.size(self.buffer_size)
-				.build();
+				.size(self.buffer_size);
 			unsafe {
 				vk_device.device.cmd_copy_buffer(
 					cmd_buf,
@@ -517,11 +511,10 @@ impl VkCpuBuffer {
 			};
 
 			// Copy buffer
-			let region = vk::BufferCopy::builder()
+			let region = vk::BufferCopy::default()
 				.src_offset(0)
 				.dst_offset(0)
-				.size(self.buffer_size)
-				.build();
+				.size(self.buffer_size);
 			unsafe {
 				vk_device.device.cmd_copy_buffer(
 					cmd_buf,
@@ -574,10 +567,9 @@ impl VkCpuBuffer {
 		unsafe {
 			vk_device
 				.device
-				.invalidate_mapped_memory_ranges(&[vk::MappedMemoryRange::builder()
+				.invalidate_mapped_memory_ranges(&[vk::MappedMemoryRange::default()
 					.memory(memory)
-					.size(memory_size)
-					.build()])
+					.size(memory_size)])
 		}
 	}
 
@@ -594,10 +586,9 @@ impl VkCpuBuffer {
 		unsafe {
 			vk_device
 				.device
-				.flush_mapped_memory_ranges(&[vk::MappedMemoryRange::builder()
+				.flush_mapped_memory_ranges(&[vk::MappedMemoryRange::default()
 					.memory(memory)
-					.size(memory_size)
-					.build()])
+					.size(memory_size)])
 		}
 	}
 

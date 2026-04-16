@@ -209,7 +209,7 @@ impl ImageBlit for VkCpuSharedImage {
 
 			// Copy buffer to image
 			unsafe {
-				let copy_region = vk::BufferImageCopy::builder()
+				let copy_region = vk::BufferImageCopy::default()
 					.buffer_row_length(0)
 					.buffer_image_height(0)
 					.image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
@@ -224,8 +224,7 @@ impl ImageBlit for VkCpuSharedImage {
 						layer_count: 1,
 						mip_level: 0,
 						..Default::default()
-					})
-					.build();
+					});
 				vk_device.device.cmd_copy_buffer_to_image(
 					cmd_bud,
 					self.cpu_buffer.buffer.handle,
@@ -270,12 +269,11 @@ impl ImageBlit for VkCpuSharedImage {
 
 			// Blit image
 			unsafe {
-				let image_subresource_layer = vk::ImageSubresourceLayers::builder()
+				let image_subresource_layer = vk::ImageSubresourceLayers::default()
 					.aspect_mask(vk::ImageAspectFlags::COLOR)
 					.base_array_layer(0)
 					.layer_count(1)
-					.mip_level(0)
-					.build();
+					.mip_level(0);
 				vk_device.device.cmd_blit_image(
 					cmd_bud,
 					self.image.image,
@@ -412,12 +410,11 @@ impl ImageBlit for VkCpuSharedImage {
 
 			// Blit image
 			unsafe {
-				let image_subresource_layer = vk::ImageSubresourceLayers::builder()
+				let image_subresource_layer = vk::ImageSubresourceLayers::default()
 					.aspect_mask(vk::ImageAspectFlags::COLOR)
 					.base_array_layer(0)
 					.layer_count(1)
-					.mip_level(0)
-					.build();
+					.mip_level(0);
 				vk_device.device.cmd_blit_image(
 					cmd_bud,
 					*src_image,
@@ -468,7 +465,7 @@ impl ImageBlit for VkCpuSharedImage {
 
 			// Copy image to buffer
 			unsafe {
-				let copy_region = vk::BufferImageCopy::builder()
+				let copy_region = vk::BufferImageCopy::default()
 					.buffer_row_length(0)
 					.buffer_image_height(0)
 					.image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
@@ -483,8 +480,7 @@ impl ImageBlit for VkCpuSharedImage {
 						layer_count: 1,
 						mip_level: 0,
 						..Default::default()
-					})
-					.build();
+					});
 				vk_device.device.cmd_copy_image_to_buffer(
 					cmd_bud,
 					self.image.image,

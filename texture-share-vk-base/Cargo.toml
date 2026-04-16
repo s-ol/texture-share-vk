@@ -7,11 +7,10 @@ edition = "2021"
 crate-type = [ "lib", "cdylib"]
 
 [dependencies]
-ash = "0.37.3"
+ash = "0.38"
 cxx = "1.0.107"
 libc = "0.2.148"
 texture-share-ipc = { path = "../texture-share-ipc" }
-vk-mem = "0.3.0"
 #tempfile = "3.8.0"
 #texture-share-vk-server = { path = "../texture-share-vk-server" }
 

@@ -1,4 +1,3 @@
-#![feature(entry_insert)]
 
 mod bindings;
 

@@ -124,11 +124,10 @@ impl VkSharedImage {
 		id: u32,
 	) -> Result<VkSharedImage, vk::Result> {
 		// Allocate image memory
-		let mut external_memory_image_info = vk::ExternalMemoryImageCreateInfo::builder()
-			.handle_types(Self::MEMORY_HANDLE_TYPE_FLAG)
-			.build();
+		let mut external_memory_image_info = vk::ExternalMemoryImageCreateInfo::default()
+			.handle_types(Self::MEMORY_HANDLE_TYPE_FLAG);
 
-		let image_create_info = vk::ImageCreateInfo::builder()
+		let image_create_info = vk::ImageCreateInfo::default()
 			.image_type(vk::ImageType::TYPE_2D)
 			.format(format)
 			.mip_levels(1)
@@ -146,16 +145,14 @@ impl VkSharedImage {
 					| vk::ImageUsageFlags::TRANSFER_SRC
 					| vk::ImageUsageFlags::TRANSFER_DST,
 			)
-			.push_next(&mut external_memory_image_info)
-			.build();
+			.push_next(&mut external_memory_image_info);
 
 		let image = unsafe { vk_device.device.create_image(&image_create_info, None) }?;
 
 		let memory_requirements = unsafe { vk_device.device.get_image_memory_requirements(image) };
-		let mut export_memory_alloc_info = vk::ExportMemoryAllocateInfo::builder()
-			.handle_types(Self::MEMORY_HANDLE_TYPE_FLAG)
-			.build();
-		let mem_allocate_info = vk::MemoryAllocateInfo::builder()
+		let mut export_memory_alloc_info = vk::ExportMemoryAllocateInfo::default()
+			.handle_types(Self::MEMORY_HANDLE_TYPE_FLAG);
+		let mem_allocate_info = vk::MemoryAllocateInfo::default()
 			.allocation_size(memory_requirements.size)
 			.memory_type_index(
 				vk_instance
@@ -166,8 +163,7 @@ impl VkSharedImage {
 					)
 					.expect("Couldn't find memory type"),
 			)
-			.push_next(&mut export_memory_alloc_info)
-			.build();
+			.push_next(&mut export_memory_alloc_info);
 
 		let memory = unsafe { vk_device.device.allocate_memory(&mem_allocate_info, None) }?;
 		unsafe { vk_device.device.bind_image_memory(image, memory, 0) }?;
@@ -234,9 +230,9 @@ impl VkSharedImage {
 		image_data: SharedImageData,
 	) -> Result<VkSharedImage, vk::Result> {
 		// Create and allocate image memory
-		let mut external_memory_image_info = vk::ExternalMemoryImageCreateInfo::builder()
+		let mut external_memory_image_info = vk::ExternalMemoryImageCreateInfo::default()
 			.handle_types(Self::MEMORY_HANDLE_TYPE_FLAG);
-		let image_create_info = vk::ImageCreateInfo::builder()
+		let image_create_info = vk::ImageCreateInfo::default()
 			.push_next(&mut external_memory_image_info)
 			.image_type(vk::ImageType::TYPE_2D)
 			.format(vk::Format::R8G8B8A8_UNORM) // TODO: Use image_data.format
@@ -254,20 +250,18 @@ impl VkSharedImage {
 					| vk::ImageUsageFlags::SAMPLED
 					| vk::ImageUsageFlags::TRANSFER_SRC
 					| vk::ImageUsageFlags::TRANSFER_DST,
-			)
-			.build();
+			);
 
 		let image = unsafe { vk_device.device.create_image(&image_create_info, None) }?;
 
 		let memory_requirements = unsafe { vk_device.device.get_image_memory_requirements(image) };
 
 		#[cfg(target_os = "linux")]
-		let mut import_memory_info = vk::ImportMemoryFdInfoKHR::builder()
+		let mut import_memory_info = vk::ImportMemoryFdInfoKHR::default()
 			.fd(mem_fd.as_raw_fd())
-			.handle_type(Self::MEMORY_HANDLE_TYPE_FLAG)
-			.build();
+			.handle_type(Self::MEMORY_HANDLE_TYPE_FLAG);
 
-		let memory_allocate_info = vk::MemoryAllocateInfo::builder()
+		let memory_allocate_info = vk::MemoryAllocateInfo::default()
 			.push_next(&mut import_memory_info)
 			.allocation_size(memory_requirements.size)
 			.memory_type_index(
@@ -278,8 +272,7 @@ impl VkSharedImage {
 						vk::MemoryPropertyFlags::DEVICE_LOCAL,
 					)
 					.unwrap(),
-			)
-			.build();
+			);
 
 		let memory = unsafe {
 			vk_device
@@ -324,7 +317,7 @@ impl VkSharedImage {
 		let fence = vk_device.create_fence(None)?;
 
 		let image_layout_fcn = |com_buf: vk::CommandBuffer| {
-			let img_mem_barrier = vk::ImageMemoryBarrier::builder()
+			let img_mem_barrier = vk::ImageMemoryBarrier::default()
 				.image(*image)
 				.src_access_mask(src_access_mask)
 				.dst_access_mask(dst_access_mask)
@@ -337,8 +330,7 @@ impl VkSharedImage {
 					level_count: 1,
 					layer_count: 1,
 					..Default::default()
-				})
-				.build();
+				});
 
 			unsafe {
 				vk_device.device.cmd_pipeline_barrier(
@@ -375,10 +367,9 @@ impl VkSharedImage {
 	pub fn export_handle(&self, vk_device: &VkDevice) -> Result<VkMemoryHandle, vk::Result> {
 		use std::os::fd::FromRawFd;
 
-		let memory_info = vk::MemoryGetFdInfoKHR::builder()
+		let memory_info = vk::MemoryGetFdInfoKHR::default()
 			.handle_type(Self::MEMORY_HANDLE_TYPE_FLAG)
-			.memory(self.memory)
-			.build();
+			.memory(self.memory);
 
 		let fd = unsafe {
 			OwnedFd::from_raw_fd(vk_device.external_memory_fd.get_memory_fd(&memory_info)?)
@@ -393,7 +384,7 @@ impl VkSharedImage {
 		target_layout: vk::ImageLayout,
 		src_access_mask: vk::AccessFlags,
 		dst_access_mask: vk::AccessFlags,
-	) -> vk::ImageMemoryBarrier {
+	) -> vk::ImageMemoryBarrier<'static> {
 		let subresource_range: vk::ImageSubresourceRange = vk::ImageSubresourceRange {
 			aspect_mask: vk::ImageAspectFlags::COLOR,
 			level_count: 1,
@@ -401,7 +392,7 @@ impl VkSharedImage {
 			..Default::default()
 		};
 
-		vk::ImageMemoryBarrier::builder()
+		vk::ImageMemoryBarrier::default()
 			.image(image)
 			.old_layout(orig_layout)
 			.new_layout(target_layout)
@@ -410,7 +401,6 @@ impl VkSharedImage {
 			.src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
 			.dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
 			.subresource_range(subresource_range)
-			.build()
 	}
 
 	pub(crate) fn image_blit(
@@ -462,18 +452,16 @@ impl VkSharedImage {
 			};
 
 			// Blit image
-			let image_subresource_layer = vk::ImageSubresourceLayers::builder()
+			let image_subresource_layer = vk::ImageSubresourceLayers::default()
 				.aspect_mask(vk::ImageAspectFlags::COLOR)
 				.base_array_layer(0)
 				.layer_count(1)
-				.mip_level(0)
-				.build();
-			let image_blit = vk::ImageBlit::builder()
+				.mip_level(0);
+			let image_blit = vk::ImageBlit::default()
 				.src_subresource(image_subresource_layer)
 				.src_offsets(*src_image_extent)
 				.dst_subresource(image_subresource_layer)
-				.dst_offsets(*dst_image_extent)
-				.build();
+				.dst_offsets(*dst_image_extent);
 			unsafe {
 				vk_device.device.cmd_blit_image(
 					cmd_buf,

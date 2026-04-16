@@ -34,7 +34,7 @@ impl VkCopyImages {
 					wimg.1.image.get_image_data().height,
 				)
 			})
-			.collect::<Result<_, _>>()?;
+			.collect::<Result<(), _>>()?;
 
 		// TODO: Use fences from this function (allows the write operations to execute in parallel)
 		// read_image.0.destroy_fence(rfence);

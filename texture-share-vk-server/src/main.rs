@@ -1,4 +1,3 @@
-#![feature(cstr_count_bytes)]
 
 use std::{
 	ffi::CString,

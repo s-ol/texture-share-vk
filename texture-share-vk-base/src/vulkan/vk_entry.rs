@@ -19,9 +19,7 @@ impl VkEntry {
 	}
 
 	pub fn check_layer_support(&self, layers: &[&CStr]) -> bool {
-		let props = self
-			.entry
-			.enumerate_instance_layer_properties()
+		let props = unsafe { self.entry.enumerate_instance_layer_properties() }
 			.map_err(|_| return false)
 			.unwrap();
 

@@ -19,7 +19,7 @@ pub struct VkDevice {
 	pub command_buffer: vk::CommandBuffer,
 
 	#[cfg(target_os = "linux")]
-	pub external_memory_fd: ash::extensions::khr::ExternalMemoryFd,
+	pub external_memory_fd: ash::khr::external_memory_fd::Device,
 }
 
 pub struct VkPhysicalDeviceOptions {
@@ -81,28 +81,26 @@ impl VkDevice {
 		physical_device_options: Option<VkPhysicalDeviceOptions>,
 	) -> Result<VkDevice, vk::Result> {
 		let extensions = [
-			ExtensionOptions::Name(vk::KhrExternalSemaphoreFn::name()),
-			ExtensionOptions::Name(vk::KhrExternalMemoryFn::name()),
-			ExtensionOptions::Name(vk::KhrTimelineSemaphoreFn::name()),
+			ExtensionOptions::Name(vk::KHR_EXTERNAL_SEMAPHORE_NAME),
+			ExtensionOptions::Name(vk::KHR_EXTERNAL_MEMORY_NAME),
+			ExtensionOptions::Name(vk::KHR_TIMELINE_SEMAPHORE_NAME),
 			ExtensionOptions::SelectFirst(vec![
-				vk::KhrExternalMemoryFdFn::name(),
-				vk::KhrExternalMemoryWin32Fn::name(),
+				vk::KHR_EXTERNAL_MEMORY_FD_NAME,
+				vk::KHR_EXTERNAL_MEMORY_WIN32_NAME,
 			]),
 			ExtensionOptions::SelectFirst(vec![
-				vk::KhrExternalSemaphoreFdFn::name(),
-				vk::KhrExternalSemaphoreWin32Fn::name(),
+				vk::KHR_EXTERNAL_SEMAPHORE_FD_NAME,
+				vk::KHR_EXTERNAL_SEMAPHORE_WIN32_NAME,
 			]),
-			ExtensionOptions::Name(vk::ExtExternalMemoryHostFn::name()),
+			ExtensionOptions::Name(vk::EXT_EXTERNAL_MEMORY_HOST_NAME),
 		];
 
-		let mut physical_device_vk_12_features = vk::PhysicalDeviceVulkan12Features::builder()
-			.timeline_semaphore(true)
-			.build();
+		let mut physical_device_vk_12_features = vk::PhysicalDeviceVulkan12Features::default()
+			.timeline_semaphore(true);
 
-		let mut physical_device_features = vk::PhysicalDeviceFeatures2::builder()
-			.features(vk::PhysicalDeviceFeatures::builder().build())
-			.push_next(&mut physical_device_vk_12_features)
-			.build();
+		let mut physical_device_features = vk::PhysicalDeviceFeatures2::default()
+			.features(vk::PhysicalDeviceFeatures::default())
+			.push_next(&mut physical_device_vk_12_features);
 
 		let physical_device_options = physical_device_options.unwrap_or_default();
 
@@ -138,20 +136,19 @@ impl VkDevice {
 			None => return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
 		};
 
-		let queue_device_info = vk::DeviceQueueCreateInfo::builder()
+		let queue_device_info = vk::DeviceQueueCreateInfo::default()
 			.queue_family_index(queue_family_index)
-			.queue_priorities(&[1.0])
-			.build();
+			.queue_priorities(&[1.0]);
 
 		let avail_extensions_c = avail_extensions
 			.iter()
 			.map(|x| x.as_ptr())
 			.collect::<Vec<_>>();
-		let device_create_info = vk::DeviceCreateInfo::builder()
+		let queue_create_infos = [queue_device_info];
+		let device_create_info = vk::DeviceCreateInfo::default()
 			.enabled_extension_names(&avail_extensions_c)
-			.queue_create_infos(&[queue_device_info])
-			.push_next(&mut physical_device_features)
-			.build();
+			.queue_create_infos(&queue_create_infos)
+			.push_next(&mut physical_device_features);
 
 		let vk_device = unsafe {
 			vk_instance
@@ -172,7 +169,7 @@ impl VkDevice {
 
 		#[cfg(target_os = "linux")]
 		let external_memory_fd =
-			ash::extensions::khr::ExternalMemoryFd::new(&vk_instance.instance, &vk_device);
+			ash::khr::external_memory_fd::Device::new(&vk_instance.instance, &vk_device);
 
 		Ok(VkDevice {
 			device: vk_device,
@@ -208,7 +205,7 @@ impl VkDevice {
 
 		#[cfg(target_os = "linux")]
 		let external_memory_fd =
-			ash::extensions::khr::ExternalMemoryFd::new(&vk_instance.instance, &vk_device);
+			ash::khr::external_memory_fd::Device::new(&vk_instance.instance, &vk_device);
 
 		Ok(VkDevice {
 			device: vk_device,
@@ -318,9 +315,8 @@ impl VkDevice {
 		physical_device: vk::PhysicalDevice,
 	) -> uuid::Uuid {
 		let mut uuid_props = vk::PhysicalDeviceVulkan11Properties::default();
-		let mut props = vk::PhysicalDeviceProperties2::builder()
-			.push_next(&mut uuid_props)
-			.build();
+		let mut props = vk::PhysicalDeviceProperties2::default()
+			.push_next(&mut uuid_props);
 		unsafe { vk_instance.get_physical_device_properties2(physical_device, &mut props) };
 
 		let gpu_device_uuid = uuid::Uuid::from_bytes(uuid_props.device_uuid);
@@ -339,11 +335,10 @@ impl VkDevice {
 	pub fn get_external_memory_host_properties(
 		vk_instance: &Instance,
 		physical_device: vk::PhysicalDevice,
-	) -> vk::PhysicalDeviceExternalMemoryHostPropertiesEXT {
+	) -> vk::PhysicalDeviceExternalMemoryHostPropertiesEXT<'_> {
 		let mut external_host_props = vk::PhysicalDeviceExternalMemoryHostPropertiesEXT::default();
-		let mut prop = vk::PhysicalDeviceProperties2::builder()
-			.push_next(&mut external_host_props)
-			.build();
+		let mut prop = vk::PhysicalDeviceProperties2::default()
+			.push_next(&mut external_host_props);
 
 		unsafe { vk_instance.get_physical_device_properties2(physical_device, &mut prop) };
 
@@ -354,10 +349,9 @@ impl VkDevice {
 		vk_device: &Device,
 		vk_graphics_queue_family_index: u32,
 	) -> Result<vk::CommandPool, vk::Result> {
-		let command_pool_create_info = vk::CommandPoolCreateInfo::builder()
+		let command_pool_create_info = vk::CommandPoolCreateInfo::default()
 			.flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
-			.queue_family_index(vk_graphics_queue_family_index)
-			.build();
+			.queue_family_index(vk_graphics_queue_family_index);
 
 		let command_pool =
 			unsafe { vk_device.create_command_pool(&command_pool_create_info, None) }?;
@@ -374,11 +368,10 @@ impl VkDevice {
 		command_pool: vk::CommandPool,
 		level: vk::CommandBufferLevel,
 	) -> Result<vk::CommandBuffer, vk::Result> {
-		let allocate_info = vk::CommandBufferAllocateInfo::builder()
+		let allocate_info = vk::CommandBufferAllocateInfo::default()
 			.command_pool(command_pool)
 			.command_buffer_count(1)
-			.level(level)
-			.build();
+			.level(level);
 
 		let command_buffer = unsafe { vk_device.allocate_command_buffers(&allocate_info) }?;
 		Ok(command_buffer[0])
@@ -439,9 +432,8 @@ impl VkDevice {
 		signal_semaphores: &[vk::Semaphore],
 		fence: vk::Fence,
 	) -> Result<(), vk::Result> {
-		let cmd_begin_info = vk::CommandBufferBeginInfo::builder()
-			.flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT)
-			.build();
+		let cmd_begin_info = vk::CommandBufferBeginInfo::default()
+			.flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 		unsafe {
 			self.device
 				.begin_command_buffer(command_buffer, &cmd_begin_info)

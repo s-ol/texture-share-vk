@@ -236,7 +236,7 @@ impl GlClient {
 		&mut self,
 		image_name: &str,
 		force_update: bool,
-	) -> Result<Option<(ReadLockGuard, &ShmemDataInternal)>, Box<dyn std::error::Error>> {
+	) -> Result<Option<(ReadLockGuard<'_>, &ShmemDataInternal)>, Box<dyn std::error::Error>> {
 		let res = self.find_image_internal(image_name, force_update)?;
 		let res = match res {
 			Some(image_data) => {

@@ -30,13 +30,13 @@ impl VkInstance {
 		let entry = entry.unwrap_or(Box::new(VkEntry::new()?));
 
 		let mut extensions = vec![
-			vk::KhrGetPhysicalDeviceProperties2Fn::name().as_ptr(),
-			vk::KhrExternalSemaphoreCapabilitiesFn::name().as_ptr(),
-			vk::KhrExternalMemoryCapabilitiesFn::name().as_ptr(),
+			vk::KHR_GET_PHYSICAL_DEVICE_PROPERTIES2_NAME.as_ptr(),
+			vk::KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_NAME.as_ptr(),
+			vk::KHR_EXTERNAL_MEMORY_CAPABILITIES_NAME.as_ptr(),
 		];
 
 		if enable_validation {
-			extensions.push(vk::ExtDebugUtilsFn::name().as_ptr())
+			extensions.push(vk::EXT_DEBUG_UTILS_NAME.as_ptr())
 		}
 
 		let layers = if enable_validation && entry.check_layer_support(validation_layers) {
@@ -51,16 +51,14 @@ impl VkInstance {
 			Vec::default()
 		};
 
-		let app_info = vk::ApplicationInfo::builder()
+		let app_info = vk::ApplicationInfo::default()
 			.api_version(vk::make_api_version(0, 1, 2, 0))
-			.application_name(instance_name)
-			.build();
+			.application_name(instance_name);
 
-		let create_info = vk::InstanceCreateInfo::builder()
+		let create_info = vk::InstanceCreateInfo::default()
 			.application_info(&app_info)
 			.enabled_extension_names(&extensions)
-			.enabled_layer_names(&layers)
-			.build();
+			.enabled_layer_names(&layers);
 
 		let instance = unsafe { entry.entry.create_instance(&create_info, None) }?;
 		Ok(VkInstance {
