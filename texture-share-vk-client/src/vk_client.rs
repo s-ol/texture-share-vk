@@ -4,7 +4,7 @@ use std::{mem::ManuallyDrop, os::fd::OwnedFd, time::Duration};
 
 use texture_share_vk_base::ash::vk;
 use texture_share_vk_base::ipc::platform::daemon_launch::server_connect_and_daemon_launch;
-use texture_share_vk_base::ipc::platform::img_data::{ImgData, ImgFormat};
+use texture_share_vk_base::ipc::platform::img_data::{ImgData, ImgFormat, ImgType};
 use texture_share_vk_base::ipc::platform::ipc_commands::{
 	CommCopyImage, CommFindImage, CommInitImage, CommandData, CommandMsg, CommandTag,
 };
@@ -150,7 +150,9 @@ impl VkClient {
 		image_name: &str,
 		width: u32,
 		height: u32,
+		depth_or_array_layers: u32,
 		format: ImgFormat,
+		image_type: ImgType,
 		overwrite_existing: bool,
 	) -> Result<Option<bool>, Box<dyn std::error::Error>> {
 		let image_name_buf = ImgData::convert_shmem_str_to_array(image_name);
@@ -162,7 +164,9 @@ impl VkClient {
 					shmem_name: image_name_buf,
 					width,
 					height,
+					depth_or_array_layers,
 					format,
+					image_type,
 					overwrite_existing,
 					gpu_device_uuid: self.gpu_device_uuid,
 				}),

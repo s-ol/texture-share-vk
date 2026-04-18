@@ -182,6 +182,7 @@ impl VkCpuBuffer {
 			);
 			let img_mem_barrier = VkSharedImage::gen_img_mem_barrier(
 				image,
+				1,
 				image_layout,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -236,6 +237,7 @@ impl VkCpuBuffer {
 			);
 			let img_mem_barrier = VkSharedImage::gen_img_mem_barrier(
 				image,
+				1,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				image_layout,
 				vk::AccessFlags::TRANSFER_READ,
@@ -317,6 +319,7 @@ impl VkCpuBuffer {
 			);
 			let img_mem_barrier = VkSharedImage::gen_img_mem_barrier(
 				image,
+				1,
 				image_layout,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -371,6 +374,7 @@ impl VkCpuBuffer {
 			);
 			let img_mem_barrier = VkSharedImage::gen_img_mem_barrier(
 				image,
+				1,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				image_layout,
 				vk::AccessFlags::TRANSFER_WRITE,

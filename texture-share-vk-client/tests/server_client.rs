@@ -11,7 +11,7 @@ use std::{
 
 use texture_share_vk_base::{ash::vk, vk_device::VkDevice, vk_instance::VkInstance};
 use texture_share_vk_base::{
-	ipc::platform::img_data::ImgFormat, vk_setup::VkSetup, vk_shared_image::VkSharedImage,
+	ipc::platform::img_data::{ImgFormat, ImgType}, vk_setup::VkSetup, vk_shared_image::VkSharedImage,
 };
 use texture_share_vk_client::VkClient;
 use texture_share_vk_server::VkServer;
@@ -100,7 +100,7 @@ fn server_client_init_image() {
 		println!("Connection successful");
 
 		let res = client
-			.init_image(IMAGE_NAME, 1, 1, ImgFormat::R8G8B8A8, false)
+			.init_image(IMAGE_NAME, 1, 1, 1, ImgFormat::R8G8B8A8, ImgType::D2, false)
 			.unwrap();
 
 		assert!(res.is_some());
@@ -142,21 +142,21 @@ fn server_client_overwrite_image() {
 		println!("Connection successful");
 
 		let res = client
-			.init_image(IMAGE_NAME, 1, 1, ImgFormat::R8G8B8A8, false)
+			.init_image(IMAGE_NAME, 1, 1, 1, ImgFormat::R8G8B8A8, ImgType::D2, false)
 			.unwrap();
 
 		assert!(res.is_some());
 		println!("Image created");
 
 		let res = client
-			.init_image(IMAGE_NAME, 1, 1, ImgFormat::R8G8B8A8, false)
+			.init_image(IMAGE_NAME, 1, 1, 1, ImgFormat::R8G8B8A8, ImgType::D2, false)
 			.unwrap();
 
 		assert!(res.is_none());
 		println!("Image not overwritten, as expected");
 
 		let res = client
-			.init_image(IMAGE_NAME, 2, 2, ImgFormat::R8G8B8A8, true)
+			.init_image(IMAGE_NAME, 2, 2, 1, ImgFormat::R8G8B8A8, ImgType::D2, true)
 			.unwrap();
 
 		assert!(res.is_some());
@@ -206,7 +206,7 @@ fn server_client_find_image() {
 		println!("Image not found, as expected");
 
 		let res = client
-			.init_image(IMAGE_NAME, 1, 1, ImgFormat::R8G8B8A8, false)
+			.init_image(IMAGE_NAME, 1, 1, 1, ImgFormat::R8G8B8A8, ImgType::D2, false)
 			.unwrap();
 
 		assert!(res.is_some());
@@ -270,7 +270,7 @@ fn server_client_find_image_data() {
 		let format: ImgFormat = ImgFormat::R8G8B8A8;
 		{
 			let res = client
-				.init_image(IMAGE_NAME, width, height, format, false)
+				.init_image(IMAGE_NAME, width, height, 1, format, ImgType::D2, false)
 				.unwrap();
 			assert!(res.is_some());
 			println!("Image created");
@@ -291,7 +291,7 @@ fn server_client_find_image_data() {
 
 		{
 			let res = client
-				.init_image(IMAGE_NAME, width + 1, height + 1, format, true)
+				.init_image(IMAGE_NAME, width + 1, height + 1, 1, format, ImgType::D2, true)
 				.unwrap();
 			assert!(res.is_some());
 			println!("Image overwritten");
@@ -343,7 +343,7 @@ fn server_client_send_image() {
 		println!("Connection successful");
 
 		let res = client
-			.init_image(IMAGE_NAME, 1, 1, ImgFormat::R8G8B8A8, false)
+			.init_image(IMAGE_NAME, 1, 1, 1, ImgFormat::R8G8B8A8, ImgType::D2, false)
 			.unwrap();
 		assert!(res.is_some());
 		println!("Image created");

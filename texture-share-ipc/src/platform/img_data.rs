@@ -7,12 +7,30 @@ pub(crate) type ShmemName = [u8; 1024];
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(non_camel_case_types)]
 pub enum ImgFormat {
 	R8G8B8A8,
 	R8G8B8,
 	B8G8R8A8,
 	B8G8R8,
+	BC1_RGBA,
+	BC3_RGBA,
+	BC7_RGBA,
 	Undefined,
+}
+
+/// Image dimensionality, matching VkImageType values.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ImgType {
+	D2 = 1,
+	D3 = 2,
+}
+
+impl Default for ImgType {
+	fn default() -> Self {
+		ImgType::D2
+	}
 }
 
 #[repr(C)]
@@ -28,7 +46,9 @@ impl ImgData {
 		handle_id: u32,
 		width: u32,
 		height: u32,
+		depth_or_array_layers: u32,
 		format: ImgFormat,
+		image_type: ImgType,
 		allocation_size: u64,
 		gpu_device_uuid: uuid::Uuid,
 	) -> ImgData {
@@ -39,7 +59,9 @@ impl ImgData {
 				handle_id,
 				width,
 				height,
+				depth_or_array_layers,
 				format,
+				image_type,
 				allocation_size,
 				gpu_device_uuid.as_u128(),
 			),
@@ -79,6 +101,13 @@ impl ImgData {
 		}
 
 		String::from_utf8_lossy(&shmem_name[0..end.unwrap()]).to_string()
+	}
+}
+
+impl ImgFormat {
+	/// Returns true for block-compressed (BC/DXT) formats.
+	pub fn is_compressed(&self) -> bool {
+		matches!(self, ImgFormat::BC1_RGBA | ImgFormat::BC3_RGBA | ImgFormat::BC7_RGBA)
 	}
 }
 

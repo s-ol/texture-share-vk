@@ -12,6 +12,7 @@ use std::mem::size_of;
 use crate::platform::img_data::ImgData;
 use crate::platform::img_data::ImgFormat;
 use crate::platform::img_data::ImgName;
+use crate::platform::img_data::ImgType;
 use crate::platform::RwLockInternalData;
 
 #[repr(C)]
@@ -21,7 +22,9 @@ pub struct ShmemDataInternal {
 	pub handle_id: u32,
 	pub width: u32,
 	pub height: u32,
+	pub depth_or_array_layers: u32,
 	pub format: ImgFormat,
+	pub image_type: ImgType,
 	pub allocation_size: u64,
 	pub gpu_device_uuid_0: u64,
 	pub gpu_device_uuid_1: u64,
@@ -46,7 +49,9 @@ impl Default for ShmemDataInternal {
 			handle_id: 0,
 			width: 0,
 			height: 0,
+			depth_or_array_layers: 1,
 			format: ImgFormat::default(),
+			image_type: ImgType::default(),
 			allocation_size: 0,
 			gpu_device_uuid_0: nil.0,
 			gpu_device_uuid_1: nil.1,
@@ -130,7 +135,9 @@ impl ShmemDataInternal {
 		handle_id: u32,
 		width: u32,
 		height: u32,
+		depth_or_array_layers: u32,
 		format: ImgFormat,
+		image_type: ImgType,
 		allocation_size: u64,
 		gpu_device_uuid: u128,
 	) -> ShmemDataInternal {
@@ -140,7 +147,9 @@ impl ShmemDataInternal {
 			handle_id,
 			width,
 			height,
+			depth_or_array_layers,
 			format,
+			image_type,
 			allocation_size,
 			gpu_device_uuid_0: gpu_uuid_pair.0,
 			gpu_device_uuid_1: gpu_uuid_pair.1,

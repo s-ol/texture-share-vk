@@ -119,6 +119,7 @@ impl GlSharedImage {
 			ImgFormat::B8G8R8A8 => glad::GL_BGRA,
 			ImgFormat::R8G8B8 => glad::GL_RGB,
 			ImgFormat::R8G8B8A8 => glad::GL_RGBA,
+			ImgFormat::BC1_RGBA | ImgFormat::BC3_RGBA | ImgFormat::BC7_RGBA => glad::GL_NONE, // compressed formats not supported in GL client
 			ImgFormat::Undefined => glad::GL_NONE,
 		}
 	}
@@ -129,6 +130,7 @@ impl GlSharedImage {
 			ImgFormat::B8G8R8A8 => glad::GL_RGBA8,
 			ImgFormat::R8G8B8 => glad::GL_RGB8,
 			ImgFormat::R8G8B8A8 => glad::GL_RGBA8,
+			ImgFormat::BC1_RGBA | ImgFormat::BC3_RGBA | ImgFormat::BC7_RGBA => glad::GL_NONE, // compressed formats not supported in GL client
 			ImgFormat::Undefined => glad::GL_NONE,
 		}
 		.try_into()

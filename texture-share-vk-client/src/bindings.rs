@@ -7,7 +7,7 @@ use std::{
 use texture_share_vk_base::{
 	ash::vk,
 	bindings::vk_setup_from_c,
-	ipc::platform::{img_data::ImgFormat, ReadLockGuard, ShmemDataInternal},
+	ipc::platform::{img_data::{ImgFormat, ImgType}, ReadLockGuard, ShmemDataInternal},
 	vk_device::VkDevice,
 	vk_instance::VkInstance,
 	vk_setup::VkSetup,
@@ -167,14 +167,18 @@ extern "C" fn vk_client_init_image(
 	image_name: *const c_char,
 	width: u32,
 	height: u32,
+	depth_or_array_layers: u32,
 	format: ImgFormat,
+	image_type: ImgType,
 	overwrite_existing: bool,
 ) -> ImageLookupResult {
 	match unsafe { vk_client.as_mut() }.unwrap().init_image(
 		&get_str(&image_name),
 		width,
 		height,
+		depth_or_array_layers,
 		format,
+		image_type,
 		overwrite_existing,
 	) {
 		Ok(Some(true)) => return ImageLookupResult::RequiresUpdate,

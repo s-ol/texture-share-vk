@@ -99,12 +99,13 @@ void TextureShareGlClient::destroy_client()
 }
 
 ImageLookupResult TextureShareGlClient::init_image(const char *image_name, uint32_t width, uint32_t height,
-                                                   ImgFormat format, bool overwrite_existing)
+                                                   uint32_t depth_or_array_layers, ImgFormat format,
+                                                   ImgType image_type, bool overwrite_existing)
 {
 	if(!this->_client)
 		return ImageLookupResult::Error;
 
-	return gl_client_init_image(this->_client, image_name, width, height, format, overwrite_existing);
+	return gl_client_init_image(this->_client, image_name, width, height, depth_or_array_layers, format, image_type, overwrite_existing);
 }
 
 ImageLookupResult TextureShareGlClient::find_image(const char *image_name, bool force_update)

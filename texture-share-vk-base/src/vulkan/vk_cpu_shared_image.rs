@@ -62,11 +62,13 @@ impl VkCpuSharedImage {
 		vk_device: &VkDevice,
 		width: u32,
 		height: u32,
+		depth_or_array_layers: u32,
 		format: vk::Format,
+		image_type: vk::ImageType,
 		id: u32,
 	) -> Result<VkCpuSharedImage, vk::Result> {
 		let vk_shared_image =
-			VkSharedImage::new(vk_instance, vk_device, width, height, format, id)?;
+			VkSharedImage::new(vk_instance, vk_device, width, height, depth_or_array_layers, format, image_type, id)?;
 		Self::from_shared_image(vk_instance, vk_device, vk_shared_image)
 	}
 
@@ -105,12 +107,14 @@ impl VkCpuSharedImage {
 		vk_device: &VkDevice,
 		width: u32,
 		height: u32,
+		depth_or_array_layers: u32,
 		format: vk::Format,
+		image_type: vk::ImageType,
 		id: u32,
 		ram_buffer: &mut AlignedRamBuffer,
 	) -> Result<(), vk::Result> {
 		self.image
-			.resize_image(vk_instance, vk_device, width, height, format, id)?;
+			.resize_image(vk_instance, vk_device, width, height, depth_or_array_layers, format, image_type, id)?;
 		if self.image.data.allocation_size as usize > ram_buffer.layout.align() {
 			*ram_buffer = VkCpuSharedImage::gen_device_aligned_ram_buffer(
 				self.image.data.allocation_size as usize,
@@ -147,12 +151,14 @@ impl ImageBlit for VkCpuSharedImage {
 		dst_image_extent: &[vk::Offset3D; 2],
 		fence: vk::Fence,
 	) -> Result<(), vk::Result> {
+		let (extent_depth, array_layers) = VkSharedImage::decompose_depth_layers(self.image.data.image_type, self.image.data.depth_or_array_layers);
+		let layer_count = VkSharedImage::subresource_layer_count(self.image.data.image_type, self.image.data.depth_or_array_layers);
 		let src_image_extent = [
 			vk::Offset3D { x: 0, y: 0, z: 0 },
 			vk::Offset3D {
 				x: self.image.data.width as i32,
 				y: self.image.data.height as i32,
-				z: 1,
+				z: extent_depth as i32,
 			},
 		];
 
@@ -190,6 +196,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let src_image_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				self.image.image_layout,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -216,12 +223,12 @@ impl ImageBlit for VkCpuSharedImage {
 					.image_extent(vk::Extent3D {
 						width: self.image.data.width,
 						height: self.image.data.height,
-						depth: 1,
+						depth: extent_depth,
 					})
 					.image_subresource(vk::ImageSubresourceLayers {
 						aspect_mask: vk::ImageAspectFlags::COLOR,
 						base_array_layer: 0,
-						layer_count: 1,
+						layer_count: array_layers,
 						mip_level: 0,
 						..Default::default()
 					});
@@ -243,6 +250,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let src_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				vk::AccessFlags::TRANSFER_WRITE,
@@ -250,6 +258,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let dst_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				*dst_image,
+				layer_count,
 				orig_dst_image_layout,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -267,31 +276,55 @@ impl ImageBlit for VkCpuSharedImage {
 				);
 			}
 
-			// Blit image
+			// Copy/blit image
 			unsafe {
 				let image_subresource_layer = vk::ImageSubresourceLayers::default()
 					.aspect_mask(vk::ImageAspectFlags::COLOR)
 					.base_array_layer(0)
-					.layer_count(1)
+					.layer_count(layer_count)
 					.mip_level(0);
-				vk_device.device.cmd_blit_image(
-					cmd_bud,
-					self.image.image,
-					vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-					*dst_image,
-					vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-					&[vk::ImageBlit {
-						src_offsets: src_image_extent,
-						src_subresource: image_subresource_layer,
-						dst_offsets: *dst_image_extent,
-						dst_subresource: image_subresource_layer,
-					}],
-					vk::Filter::NEAREST,
-				)
+				let format = VkSharedImage::get_img_format(self.image.data.format);
+				if format.is_compressed() {
+					let extent = vk::Extent3D {
+						width: src_image_extent[1].x as u32,
+						height: src_image_extent[1].y as u32,
+						depth: src_image_extent[1].z as u32,
+					};
+					vk_device.device.cmd_copy_image(
+						cmd_bud,
+						self.image.image,
+						vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+						*dst_image,
+						vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+						&[vk::ImageCopy {
+							src_subresource: image_subresource_layer,
+							src_offset: src_image_extent[0],
+							dst_subresource: image_subresource_layer,
+							dst_offset: dst_image_extent[0],
+							extent,
+						}],
+					)
+				} else {
+					vk_device.device.cmd_blit_image(
+						cmd_bud,
+						self.image.image,
+						vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+						*dst_image,
+						vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+						&[vk::ImageBlit {
+							src_offsets: src_image_extent,
+							src_subresource: image_subresource_layer,
+							dst_offsets: *dst_image_extent,
+							dst_subresource: image_subresource_layer,
+						}],
+						vk::Filter::NEAREST,
+					)
+				}
 			}
 
 			let src_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				self.image.image_layout,
 				vk::AccessFlags::TRANSFER_READ,
@@ -299,6 +332,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let dst_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				*dst_image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				target_dst_image_layout,
 				vk::AccessFlags::TRANSFER_WRITE,
@@ -339,12 +373,13 @@ impl ImageBlit for VkCpuSharedImage {
 		target_dst_image_layout: vk::ImageLayout,
 		fence: vk::Fence,
 	) -> Result<(), vk::Result> {
+		let (extent_depth, _) = VkSharedImage::decompose_depth_layers(self.image.data.image_type, self.image.data.depth_or_array_layers);
 		let dst_image_extent = [
 			vk::Offset3D { x: 0, y: 0, z: 0 },
 			vk::Offset3D {
 				x: self.image.data.width as i32,
 				y: self.image.data.height as i32,
-				z: 1,
+				z: extent_depth as i32,
 			},
 		];
 
@@ -367,12 +402,14 @@ impl ImageBlit for VkCpuSharedImage {
 		src_image_extent: &[vk::Offset3D; 2],
 		fence: vk::Fence,
 	) -> Result<(), vk::Result> {
+		let (extent_depth, array_layers) = VkSharedImage::decompose_depth_layers(self.image.data.image_type, self.image.data.depth_or_array_layers);
+		let layer_count = VkSharedImage::subresource_layer_count(self.image.data.image_type, self.image.data.depth_or_array_layers);
 		let dst_image_extent = [
 			vk::Offset3D { x: 0, y: 0, z: 0 },
 			vk::Offset3D {
 				x: self.image.data.width as i32,
 				y: self.image.data.height as i32,
-				z: 1,
+				z: extent_depth as i32,
 			},
 		];
 
@@ -384,6 +421,7 @@ impl ImageBlit for VkCpuSharedImage {
 
 			let src_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				*src_image,
+				layer_count,
 				orig_src_image_layout,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -391,6 +429,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let dst_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				self.image.image_layout,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::AccessFlags::NONE,
@@ -408,31 +447,55 @@ impl ImageBlit for VkCpuSharedImage {
 				);
 			}
 
-			// Blit image
+			// Copy/blit image
 			unsafe {
 				let image_subresource_layer = vk::ImageSubresourceLayers::default()
 					.aspect_mask(vk::ImageAspectFlags::COLOR)
 					.base_array_layer(0)
-					.layer_count(1)
+					.layer_count(layer_count)
 					.mip_level(0);
-				vk_device.device.cmd_blit_image(
-					cmd_bud,
-					*src_image,
-					vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-					self.image.image,
-					vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-					&[vk::ImageBlit {
-						src_offsets: *src_image_extent,
-						src_subresource: image_subresource_layer,
-						dst_offsets: dst_image_extent,
-						dst_subresource: image_subresource_layer,
-					}],
-					vk::Filter::NEAREST,
-				)
+				let format = VkSharedImage::get_img_format(self.image.data.format);
+				if format.is_compressed() {
+					let extent = vk::Extent3D {
+						width: src_image_extent[1].x as u32,
+						height: src_image_extent[1].y as u32,
+						depth: src_image_extent[1].z as u32,
+					};
+					vk_device.device.cmd_copy_image(
+						cmd_bud,
+						*src_image,
+						vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+						self.image.image,
+						vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+						&[vk::ImageCopy {
+							src_subresource: image_subresource_layer,
+							src_offset: src_image_extent[0],
+							dst_subresource: image_subresource_layer,
+							dst_offset: dst_image_extent[0],
+							extent,
+						}],
+					)
+				} else {
+					vk_device.device.cmd_blit_image(
+						cmd_bud,
+						*src_image,
+						vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+						self.image.image,
+						vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+						&[vk::ImageBlit {
+							src_offsets: *src_image_extent,
+							src_subresource: image_subresource_layer,
+							dst_offsets: dst_image_extent,
+							dst_subresource: image_subresource_layer,
+						}],
+						vk::Filter::NEAREST,
+					)
+				}
 			}
 
 			let src_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				*src_image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				target_src_image_layout,
 				vk::AccessFlags::TRANSFER_READ,
@@ -440,6 +503,7 @@ impl ImageBlit for VkCpuSharedImage {
 			);
 			let dst_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				vk::AccessFlags::TRANSFER_WRITE,
@@ -472,12 +536,12 @@ impl ImageBlit for VkCpuSharedImage {
 					.image_extent(vk::Extent3D {
 						width: self.image.data.width,
 						height: self.image.data.height,
-						depth: 1,
+						depth: extent_depth,
 					})
 					.image_subresource(vk::ImageSubresourceLayers {
 						aspect_mask: vk::ImageAspectFlags::COLOR,
 						base_array_layer: 0,
-						layer_count: 1,
+						layer_count: array_layers,
 						mip_level: 0,
 						..Default::default()
 					});
@@ -492,6 +556,7 @@ impl ImageBlit for VkCpuSharedImage {
 
 			let dst_img_barrier = VkSharedImage::gen_img_mem_barrier(
 				self.image.image,
+				layer_count,
 				vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
 				self.image.image_layout,
 				vk::AccessFlags::TRANSFER_READ,
@@ -556,12 +621,13 @@ impl ImageBlit for VkCpuSharedImage {
 		target_src_image_layout: vk::ImageLayout,
 		fence: vk::Fence,
 	) -> Result<(), vk::Result> {
+		let (extent_depth, _) = VkSharedImage::decompose_depth_layers(self.image.data.image_type, self.image.data.depth_or_array_layers);
 		let src_image_extent = [
 			vk::Offset3D { x: 0, y: 0, z: 0 },
 			vk::Offset3D {
 				x: self.image.data.width as i32,
 				y: self.image.data.height as i32,
-				z: 1,
+				z: extent_depth as i32,
 			},
 		];
 
@@ -608,7 +674,9 @@ mod tests {
 			&vk_device,
 			1,
 			1,
+			1,
 			vk::Format::R8G8B8A8_UNORM,
+			vk::ImageType::TYPE_2D,
 			0,
 		)
 		.expect("Unable to create VkCpuSharedImage");
@@ -624,7 +692,9 @@ mod tests {
 			&vk_device,
 			1,
 			1,
+			1,
 			vk::Format::R8G8B8A8_UNORM,
+			vk::ImageType::TYPE_2D,
 			0,
 		)
 		.expect("Unable to create vk_cpu_shared_image_in");
@@ -634,7 +704,9 @@ mod tests {
 			&vk_device,
 			1,
 			1,
+			1,
 			vk::Format::R8G8B8A8_UNORM,
+			vk::ImageType::TYPE_2D,
 			0,
 		)
 		.expect("Unable to create vk_cpu_shared_image_out");

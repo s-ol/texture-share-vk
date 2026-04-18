@@ -50,7 +50,8 @@ class TextureShareGlClient
 
 	void destroy_client();
 
-	ImageLookupResult init_image(const char *image_name, uint32_t width, uint32_t height, ImgFormat format,
+	ImageLookupResult init_image(const char *image_name, uint32_t width, uint32_t height,
+	                             uint32_t depth_or_array_layers, ImgFormat format, ImgType image_type,
 	                             bool overwrite_existing);
 
 	ImageLookupResult find_image(const char *image_name, bool force_update);

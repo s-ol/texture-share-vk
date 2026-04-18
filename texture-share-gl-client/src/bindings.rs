@@ -6,7 +6,7 @@ use std::{
 };
 
 use libc::{c_char, c_int};
-use texture_share_ipc::platform::{img_data::ImgFormat, ReadLockGuard, ShmemDataInternal};
+use texture_share_ipc::platform::{img_data::{ImgFormat, ImgType}, ReadLockGuard, ShmemDataInternal};
 
 use crate::GlClient;
 use crate::{gl_shared_image::GlImageExtent, opengl::glad};
@@ -109,14 +109,18 @@ extern "C" fn gl_client_init_image(
 	image_name: *const c_char,
 	width: u32,
 	height: u32,
+	depth_or_array_layers: u32,
 	format: ImgFormat,
+	image_type: ImgType,
 	overwrite_existing: bool,
 ) -> ImageLookupResult {
 	match unsafe { gl_client.as_mut() }.unwrap().init_image(
 		&get_str(&image_name),
 		width,
 		height,
+		depth_or_array_layers,
 		format,
+		image_type,
 		overwrite_existing,
 	) {
 		Ok(Some(true)) => return ImageLookupResult::RequiresUpdate,

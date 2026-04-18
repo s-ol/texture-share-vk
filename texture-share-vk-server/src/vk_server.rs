@@ -237,7 +237,9 @@ impl VkServer {
 					vk_device,
 					cmd.width,
 					cmd.height,
+					cmd.depth_or_array_layers,
 					VkSharedImage::get_vk_format(cmd.format),
+					VkSharedImage::get_vk_image_type(cmd.image_type),
 					0,
 				)?;
 				let _ = gpu_images_map
@@ -256,6 +258,7 @@ impl VkServer {
 			// let mut data = IpcShmem::acquire_data(&lock);
 
 			let format = VkSharedImage::get_vk_format(cmd.format);
+			let image_type = VkSharedImage::get_vk_image_type(cmd.image_type);
 			let mut cur_img_lock = MaybeUninit::uninit();
 			let mut cur_img_data = MaybeUninit::uninit();
 			let _locks = gpu_images_map
@@ -271,7 +274,9 @@ impl VkServer {
 						&vk_device,
 						cmd.width,
 						cmd.height,
+						cmd.depth_or_array_layers,
 						format,
+						image_type,
 						data.handle_id + 1,
 						&mut gpu_images_map.ram_buffer,
 					)?;
@@ -565,7 +570,9 @@ impl VkServer {
 
 		shmem_data.width = vk_data.width;
 		shmem_data.height = vk_data.height;
+		shmem_data.depth_or_array_layers = vk_data.depth_or_array_layers;
 		shmem_data.format = VkSharedImage::get_img_format(vk_data.format);
+		shmem_data.image_type = VkSharedImage::get_img_type(vk_data.image_type);
 		shmem_data.allocation_size = vk_data.allocation_size;
 		shmem_data.handle_id = vk_data.id;
 	}

@@ -1,4 +1,4 @@
-use crate::platform::img_data::{ImgData, ImgFormat, ImgName, ShmemName};
+use crate::platform::img_data::{ImgData, ImgFormat, ImgName, ImgType, ShmemName};
 
 use std::mem::{size_of, ManuallyDrop};
 
@@ -41,7 +41,9 @@ pub struct CommInitImage {
 	pub shmem_name: ShmemName,
 	pub width: u32,
 	pub height: u32,
+	pub depth_or_array_layers: u32,
 	pub format: ImgFormat,
+	pub image_type: ImgType,
 	pub overwrite_existing: bool,
 	pub gpu_device_uuid: u128,
 }
@@ -107,8 +109,10 @@ impl Default for CommInitImage {
 			image_name: [0 as u8; size_of::<ImgName>()],
 			shmem_name: [0 as u8; size_of::<ShmemName>()],
 			format: ImgFormat::default(),
+			image_type: ImgType::default(),
 			width: 0,
 			height: 0,
+			depth_or_array_layers: 1,
 			overwrite_existing: false,
 			gpu_device_uuid: uuid::Uuid::nil().as_u128(),
 		}
