@@ -17,6 +17,8 @@ use texture_share_vk_base::vk_setup::VkSetup;
 use texture_share_vk_base::vk_shared_image::VkSharedImage;
 use texture_share_vk_base::vk_shared_image::{ImageBlit, SharedImageData};
 
+pub use texture_share_vk_base as base;
+
 pub struct ImageData {
 	pub ipc_info: IpcShmem,
 	pub vk_shared_image: VkSharedImage,

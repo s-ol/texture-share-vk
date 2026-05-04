@@ -15,6 +15,8 @@ use texture_share_ipc::{IpcConnection, IpcShmem};
 use crate::gl_shared_image::{GlImageExtent, GlSharedImage};
 use crate::opengl::glad;
 
+pub use texture_share_vk_base as base;
+
 pub struct ImageData {
 	pub ipc_info: IpcShmem,
 	pub vk_shared_image: GlSharedImage,
